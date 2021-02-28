@@ -1,0 +1,243 @@
+Members:  
+> Andrew Hoffman  
+Jing Ma  
+Manoj Thapa
+
+Instructor: Dr. Ziping Liu  
+Course: CS 603_740  
+
+**Using what we have learned in Numpy Module** to analyze **SP500.csv file with Numpy array operations.** Please find answers to the following questions: 
+
+**1.** The highest daily gain and its date, the highest daily loss and its date
+
+import csv
+import numpy as np
+from numpy.lib import recfunctions as rfn
+
+data = np.recfromcsv('SP500.csv', delimiter=',', encoding=None, dtype=('datetime64[D]', float, float, float, float, float, float))
+
+gainLoss = rfn.append_fields(data, 'gain/loss', (data['close'] - data['open']))
+
+indexOfMax = gainLoss['gain/loss'].argmax()
+indexOfMin = gainLoss['gain/loss'].argmin()
+
+max = gainLoss[indexOfMax]
+min = gainLoss[indexOfMin]
+
+print(f"The highest daily gain is {max['gain/loss']} on date {max['date']} ")
+print(f"The highest daily loss is {min['gain/loss']} on date {min['date']} ")
+
+**2.** The most daily transaction volume and its date
+
+import csv
+import numpy as np
+from numpy.lib import recfunctions as rfn
+
+data = np.recfromcsv('SP500.csv', delimiter=',', encoding=None, dtype=('datetime64[D]', float, float, float, float, float, float))
+
+max_transactions_index = data['volume'].argmax()
+max_transactions = data[max_transactions_index]
+
+print(f"The most daily transaction volume is {max_transactions['volume']} on date {max_transactions['date']}")
+
+**3.** A monthly report for year 2017-2018, which has **monthly average** open price, close price, transaction volume and gain/loss, and a query to find all of the months which have certain range of open prices
+
+import numpy as np
+import calendar as cal
+
+def getMonthName(month):
+  return cal.month_name[int(month)]
+
+def getData():
+  imp_Array = []
+  with open("SP500.csv") as f:
+    data = f.readlines()
+    for rows in data[1:]:
+      imp_Array.append(np.array(rows.split(',')[0].split('-')))
+
+    imp_Array = np.array(imp_Array)
+    spxFormat = np.genfromtxt("SP500.csv",
+                              delimiter=',', skip_header=1)[:, 1:]
+    adj = spxFormat[:, -2]
+    volume = spxFormat[:, -1]
+    dailyNet = np.append(0, (adj[1:] / adj[:-1] - 1) * 100)
+    spxFormat = np.c_[spxFormat, dailyNet]
+
+    indx2017 = imp_Array[:, 0] == '2017'
+    sp2017 = spxFormat[indx2017]
+    date_2017 = imp_Array[indx2017]
+    dates = {}
+
+    for d in range(len(date_2017)):
+      month = date_2017[d, 1]
+      if month in dates.keys():
+        dates[month] = dates[month] + [sp2017[d]]
+      else:
+        dates[month] = [sp2017[d]]
+    return dates
+
+def printReport(dates, lowerBound, upperBound, months):
+  def printer(averageMonth, title):
+    print('\n' + title)
+    print('Open      :', averageMonth[0])
+    print('High      :', averageMonth[1])
+    print('Low       :', averageMonth[2])
+    print('Close     :', averageMonth[3])
+    print('Adj Close :', averageMonth[4])
+    print('Volume    :', averageMonth[5])
+    print('Gain      :', averageMonth[6])
+
+    print("--------------------------------------------------")
+
+  for dt in dates.keys():
+    array = np.array(dates[dt])
+    averageMonth = np.mean(array, axis=0)
+    printer(averageMonth, f"THE AVERAGES FOR {getMonthName(dt)} ARE LISTED BELOW: ")
+
+  if len(months) > 0:
+    print(f"The month(s) that had an open price between {lowerBound} and {upperBound} are: ")
+    for x in months:
+      print(getMonthName(x))
+  else:
+    print(f"There were no months that had an open price between {lowerBound} and {upperBound}.")
+
+def getMonthsWithOpenRange(dates, lowerBound, upperBound):
+  months = []
+  for dt in dates.keys():
+    array = np.array(dates[dt])
+    min = np.min(array, 0)[0]
+    max = np.max(array, 0)[0]
+    
+    if lowerBound <= min <= upperBound or lowerBound <= max <= upperBound:
+      months.append(dt)
+
+  return lowerBound, upperBound, months
+
+dates = getData()
+
+lowerBound, upperBound, monthsWithOpeningRange = getMonthsWithOpenRange(dates, 2500, 3000)
+
+printReport(dates, lowerBound, upperBound, monthsWithOpeningRange)
+
+
+**4.** A yearly report which has **annual average** open price, close price, transaction volume and gain/loss from 1950 to 2018, and the most profitable year
+
+import numpy as np
+
+imp_Array = []
+with open("SP500.csv")as f:
+    data = f.readlines()
+    for rows in data[1:]:
+        imp_Array.append(np.array(rows.split(',')[0].split ('-')))
+        
+        
+    imp_Array = np.array(imp_Array)
+    spxFormat = np.genfromtxt("SP500.csv", delimiter = ',', skip_header=1)[:,1:]
+    adj = spxFormat[:, -2]
+    volume = spxFormat[:,-1]
+    dailyNet = np.append(0,(adj[1:] / adj[:-1]-1)*100)
+    spxFormat = np.c_[spxFormat,dailyNet]
+    
+    
+    def printer(averageMonth, title):
+        print('\n' + title, ',')
+        print('Open      :', averageMonth[0])
+        print('High      :', averageMonth[1])
+        print('Low       :', averageMonth[2])
+        print('Close     :', averageMonth[3])
+        print('Adj Close :', averageMonth[4])
+        print('Volume    :', averageMonth[5])
+        print('Gain      :', averageMonth[6])
+
+        print("-------------------------------------")
+        
+        
+    d = {}
+    for x in range (len(imp_Array)):
+        years = imp_Array[x,0]
+        if years in d.keys():
+            d[years] = d[years] + [spxFormat[x]]
+        else:
+            d[years] = [spxFormat [x]]
+            
+            
+    for y in d.keys():
+        averageMonth = np.mean(np.array(d[y]),axis=0)
+        printer(averageMonth, "ANNUAL AVERAGE FOR THE YEAR " + y)
+        imp_Array = (imp_Array).astype(int)
+        returns = []
+            
+            
+    years = np.unique ((imp_Array[:,0]).astype(int))
+    for z in years:
+        row_Index = np.where(imp_Array[:,0] == z) [0][0]
+        column_Index = np.where(imp_Array [:,0] == z) [0][-1]
+        return_Value = (adj[row_Index] / adj[column_Index]-1) * 100
+        returns.append(return_Value)
+        
+    max_GainIndex = np.argmax(returns)
+    max_Gain = returns [max_GainIndex]
+    max_GainYear = years[max_GainIndex]
+    
+    print("THE MOST PROFITABLE YEAR :" , max_GainYear)
+    print("GAINED PROFIT            :" ,round (max_Gain, 2),"%")
+    
+
+
+**5.** A every other five year report which has every **five year average** open price, close price, transaction volume and gain/loss from 1950 to 2018, and the most profitable five year
+
+import csv
+import numpy as np
+from numpy.lib import recfunctions as rfn
+import sys
+
+# Get data from CSV with gain/loss column calculated and appended.
+def getDataWithGainLoss():
+  dataType = ('datetime64[D]', float, float, float, float, float, float)
+  data = np.recfromcsv('SP500.csv', delimiter=',', encoding=None, dtype=dataType)
+  gainLoss = rfn.append_fields(data, 'gain/loss', (data['close'] - data['open']), float)
+  return gainLoss
+
+def getFiveYearAverages(data):
+  years = {}
+  highestGainAmount = sys.float_info.min
+  highestGainEndingYear = 0
+  # For every five years, grab averages and add them to a dictionary.
+  for x in range(1955, 2021, 5):
+    # Get the 5 year filter.
+    lowerbound = np.datetime64(str(x)) - np.timedelta64(5, 'Y')
+    upperbound = np.datetime64(str(x))
+    filtered = (data['date'] >= lowerbound) & (data['date'] < upperbound)
+    filteredRecords = data[filtered]
+
+    # Add the averages to the dictionary and return it.
+    openMean = np.mean(filteredRecords['open'], 0, float)
+    closeMean = np.mean(filteredRecords['close'], 0, float)
+    volumeMean = np.mean(filteredRecords['volume'], 0, float)
+    gainLossMean = np.mean(filteredRecords['gain/loss'], 0, float)
+    years[x - 5] = {"Open Average": openMean, "Close Average": closeMean, "Volume Average": volumeMean, "Gain/Loss Average":gainLossMean}
+
+    if (filteredRecords[-1]['close'] - filteredRecords[0]['open']) > highestGainAmount:
+      highestGainAmount = filteredRecords[-1]['close'] - filteredRecords[0]['open']
+  
+  return years, highestGainEndingYear
+
+def printReport(years, highest):
+  highestGain = 0.0;
+  for x,y in years.items():
+    if (x + 5) > 2018:
+      print(f"Report for {x} - 2018:")
+    else:
+      print(f"Report for {x} - {x + 5}:")
+  
+    print("---------------------------")
+    for key,value in y.items():
+      print(f"{key}: ", end='')
+      print(value)
+    print()
+  print(f"The most profitable 5 years was {x-5} - {x}")
+
+data = getDataWithGainLoss()
+years, highest = getFiveYearAverages(data)
+printReport(years, highest)
+
